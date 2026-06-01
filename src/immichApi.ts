@@ -112,6 +112,27 @@ export class ImmichApi {
     return data.assets?.items || []
   }
 
+  async searchOcr (query: string, count: number, page = 1): Promise<ImmichAsset[]> {
+    const response = await requestUrl({
+      url: `${this.serverUrl}/api/search/metadata`,
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify({
+        page,
+        size: count,
+        ocr: query,
+        type: 'IMAGE'
+      })
+    })
+
+    if (response.status !== 200) {
+      throw new Error(`Failed to search photos: ${response.status}`)
+    }
+
+    const data = response.json as ImmichSearchResponse
+    return data.assets?.items || []
+  }
+
   async getPhotosByDate (date: moment.Moment, count: number, page = 1): Promise<ImmichAsset[]> {
     // Get photos taken on the specified date (from start to end of day)
     const takenAfter = date.clone().startOf('day').toISOString()

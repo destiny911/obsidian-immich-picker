@@ -237,6 +237,19 @@
   color: var(--text-muted);
 }
 
+.immich-picker-thumbnail-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.immich-date-label {
+  font-size: 0.8em;
+  text-align: center;
+  margin-top: 2px;
+  color: var(--text-muted);
+}
+
 /* Loading indicator */
 .immich-picker-loading {
   display: flex;
