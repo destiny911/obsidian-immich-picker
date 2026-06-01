@@ -50,7 +50,13 @@ export class GridView {
         img.description = asset.description || ''
         img.onclick = onclick
         img.classList.add('immich-picker-thumbnail')
-        el.appendChild(img)
+        // Wrap the thumbnail so the date label can sit over it
+        const wrap = el.createDiv({ cls: 'immich-picker-thumbnail-wrap' })
+        wrap.appendChild(img)
+        wrap.createDiv({
+          cls: 'immich-date-label',
+          text: img.creationTime.format('YYYY-MM-DD')
+        })
 
         // Fetch actual thumbnail
         const thumbnailUrl = api.getThumbnailUrl(asset.id)

@@ -159,6 +159,16 @@ export class ImmichApi {
     )
   }
 
+  async searchOcr (query: string, count: number, page = 1): Promise<ImmichAsset[]> {
+    // Immich's metadata search matches text found in the image by OCR.
+    return this.searchVisible(
+      '/api/search/metadata',
+      { page, size: count, ocr: query, type: 'IMAGE', order: 'desc' },
+      'Failed to search photos',
+      'desc'
+    )
+  }
+
   async getPhotosByDate (date: moment.Moment, count: number, page = 1): Promise<ImmichAsset[]> {
     // Get photos taken on the specified date (from start to end of day)
     const takenAfter = date.clone().startOf('day').toISOString()

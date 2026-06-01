@@ -31,7 +31,7 @@ export class ImmichPickerModal extends Modal {
   backButton: HTMLElement
 
   currentPage = 1
-  currentMode: 'recent' | 'search' | 'albums' | 'album' | 'date' = 'recent'
+  currentMode: 'recent' | 'search' | 'ocr' | 'albums' | 'album' | 'date' = 'recent'
   currentQuery = ''
   currentAlbum: ImmichAlbum | null = null
   currentAlbumAssets: ImmichAsset[] = []
@@ -93,6 +93,11 @@ export class ImmichPickerModal extends Modal {
       text: 'Search',
       cls: 'immich-picker-search-button'
     })
+    const ocrButton = this.searchContainer.createEl('button', {
+      text: 'OCR',
+      cls: 'immich-picker-ocr-button'
+    })
+    ocrButton.addEventListener('click', () => { void this.triggerOcrSearch() })
     this.albumsButton = this.searchContainer.createEl('button', {
       text: 'Albums',
       cls: 'immich-picker-albums-button'
@@ -298,7 +303,31 @@ export class ImmichPickerModal extends Modal {
     }
   }
 
-  async displayPhotos (assets: ImmichAsset[], mode: 'recent' | 'search' | 'albums' | 'album' | 'date', query?: string, append = false) {
+  async triggerOcrSearch (): Promise<void> {
+    const query = this.searchInput.value.trim()
+    if (!query) {
+      await this.loadRecentPhotos()
+      return
+    }
+
+    this.currentPage = 1
+    this.currentMode = 'ocr'
+    this.currentQuery = query
+    this.hasMoreResults = true
+
+    this.setTitle('Immich photos - searching text...')
+    this.showLoading()
+    try {
+      const assets = await this.plugin.immichApi.searchOcr(query, this.plugin.settings.recentPhotosCount, 1)
+      await this.displayPhotos(assets, 'ocr', query, false)
+    } catch (error) {
+      console.error('Failed to ocr search:', error)
+      this.setTitle('Immich photos - search error')
+      new Notice('Search failed: ' + (error as Error).message)
+    }
+  }
+
+  async displayPhotos (assets: ImmichAsset[], mode: 'recent' | 'search' | 'ocr' | 'albums' | 'album' | 'date', query?: string, append = false) {
     // Check if we got fewer results than requested (no more pages)
     if (assets.length < this.plugin.settings.recentPhotosCount) {
       this.hasMoreResults = false
@@ -354,6 +383,12 @@ export class ImmichPickerModal extends Modal {
       let assets: ImmichAsset[]
       if (this.currentMode === 'search') {
         assets = await this.plugin.immichApi.searchPhotos(
+          this.currentQuery,
+          this.plugin.settings.recentPhotosCount,
+          this.currentPage
+        )
+      } else if (this.currentMode === 'ocr') {
+        assets = await this.plugin.immichApi.searchOcr(
           this.currentQuery,
           this.plugin.settings.recentPhotosCount,
           this.currentPage

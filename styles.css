@@ -129,6 +129,7 @@
 }
 
 .immich-picker-search-button,
+.immich-picker-ocr-button,
 .immich-picker-albums-button {
   padding: 8px 16px;
   font-size: 14px;
@@ -144,6 +145,7 @@
 }
 
 .immich-picker-search-button:hover,
+.immich-picker-ocr-button:hover,
 .immich-picker-albums-button:hover {
   background: var(--interactive-accent-hover);
 }
@@ -282,6 +284,19 @@
 .immich-picker-album-count {
   padding: 2px 8px 8px;
   font-size: var(--font-smaller);
+  color: var(--text-muted);
+}
+
+.immich-picker-thumbnail-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.immich-date-label {
+  font-size: 0.8em;
+  text-align: center;
+  margin-top: 2px;
   color: var(--text-muted);
 }
 
