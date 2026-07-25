@@ -6,7 +6,7 @@ Adapted from [obsidian-google-photos](https://github.com/alangrainger/obsidian-g
 
 ![Photo selection modal](docs/screenshot-photos.webp)
 
-![Album browsing](docs/screenshot-albums.webp)
+![Album browsing](_attachments/_attachments/screenshot-albums.webp)
 
 ## Features
 
