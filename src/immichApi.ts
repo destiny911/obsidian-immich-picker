@@ -7,6 +7,8 @@ export interface ImmichAsset {
   fileCreatedAt: string;
   type: string;
   description?: string;
+  visibility?: string;
+  livePhotoVideoId?: string | null;
 }
 
 export interface ImmichAssetDetails {
@@ -20,6 +22,7 @@ export interface ImmichSearchResponse {
   assets: {
     items: ImmichAsset[];
     count: number;
+    nextPage?: string | number | null;
   };
 }
 
@@ -29,6 +32,7 @@ export interface ImmichAlbum {
   assetCount: number;
   albumThumbnailAssetId?: string;
   updatedAt: string;
+  order?: 'asc' | 'desc';
 }
 
 export class ImmichApi {
@@ -212,19 +216,44 @@ export class ImmichApi {
     return response.json as ImmichAlbum[]
   }
 
-  async getAlbumAssets (albumId: string): Promise<ImmichAsset[]> {
-    const response = await requestUrl({
-      url: `${this.serverUrl}/api/albums/${albumId}`,
-      method: 'GET',
-      headers: this.getHeaders()
-    })
+  async getAlbumAssets (albumId: string, order: 'asc' | 'desc' = 'desc'): Promise<ImmichAsset[]> {
+    // Immich 3.x no longer inlines `assets` in GET /api/albums/{id}, so the
+    // album's contents have to be searched for by album id instead.
+    const assets: ImmichAsset[] = []
+    const pageSize = 1000
 
-    if (response.status !== 200) {
-      throw new Error(`Failed to fetch album assets: ${response.status}`)
+    for (let page = 1; page <= 100; page++) {
+      const response = await requestUrl({
+        url: `${this.serverUrl}/api/search/metadata`,
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify({
+          albumIds: [albumId],
+          page,
+          size: pageSize,
+          order
+        })
+      })
+
+      if (response.status !== 200) {
+        throw new Error(`Failed to fetch album assets: ${response.status}`)
+      }
+
+      const data = response.json as ImmichSearchResponse
+      assets.push(...(data.assets?.items || []))
+
+      if (!data.assets?.nextPage) break
     }
 
-    const album = response.json as { assets: ImmichAsset[] }
-    return album.assets || []
+    // The search results also contain entries the album view folds away: the
+    // companion video of a live photo, and assets hidden from the timeline.
+    const livePhotoVideoIds = new Set(
+      assets.map(a => a.livePhotoVideoId).filter((id): id is string => !!id)
+    )
+
+    return assets.filter(
+      a => a.visibility !== 'hidden' && !livePhotoVideoIds.has(a.id)
+    )
   }
 
   extractAssetIdFromUrl (url: string): string | null {

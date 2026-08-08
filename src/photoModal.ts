@@ -488,7 +488,7 @@ export class ImmichPickerModal extends Modal {
     this.showLoading()
 
     try {
-      const assets = await this.plugin.immichApi.getAlbumAssets(album.id)
+      const assets = await this.plugin.immichApi.getAlbumAssets(album.id, album.order)
       this.currentAlbumAssets = assets
 
       // Show first N photos
