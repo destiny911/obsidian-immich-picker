@@ -1,5 +1,9 @@
+import { dirname } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import obsidianmd from 'eslint-plugin-obsidianmd'
 import tseslint from 'typescript-eslint'
+
+const tsconfigRootDir = dirname(fileURLToPath(import.meta.url))
 
 export default [
   {
@@ -14,7 +18,7 @@ export default [
     languageOptions: {
       parserOptions: {
         projectService: true,
-        tsconfigRootDir: import.meta.dirname
+        tsconfigRootDir
       },
       globals: {
         console: 'readonly',

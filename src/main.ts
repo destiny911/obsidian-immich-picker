@@ -30,6 +30,8 @@ export default class ImmichPicker extends Plugin {
     // Register paste handler for Immich URL conversion
     this.registerEvent(
       this.app.workspace.on('editor-paste', async (evt: ClipboardEvent, editor: Editor, view: MarkdownView) => {
+        // Another handler already dealt with this paste
+        if (evt.defaultPrevented) return
         if (!this.settings.convertPastedLink) return
         if (!this.settings.serverUrl || !this.settings.apiKey) return
 
