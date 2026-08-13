@@ -1,4 +1,4 @@
-import { App, moment, Notice, PluginSettingTab, SettingDefinitionItem } from 'obsidian'
+import { App, Notice, PluginSettingTab, SettingDefinitionItem } from 'obsidian'
 import ImmichPicker from './main'
 
 export type GetDateFromOption = 'none' | 'title' | 'frontmatter';
@@ -365,7 +365,7 @@ export class ImmichPickerSettingTab extends PluginSettingTab {
       return
     }
     try {
-      const preview = moment().format(format)
+      const preview = window.moment().format(format)
       el.setText(preview)
     } catch {
       el.setText('Invalid format')

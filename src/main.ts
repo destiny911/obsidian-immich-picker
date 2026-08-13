@@ -55,7 +55,7 @@ export default class ImmichPicker extends Plugin {
           }
 
           const noteFolder = noteFile.path.split('/').slice(0, -1).join('/')
-          const creationTime = moment()
+          const creationTime = window.moment()
           const filename = creationTime.format(this.settings.filename)
 
           const { thumbnailFolder, linkPath, savePath } = this.computeThumbnailPaths(noteFolder, filename)
@@ -154,7 +154,7 @@ export default class ImmichPicker extends Plugin {
     }
 
     if (this.settings.getDateFrom === 'title') {
-      const date = moment(file.basename, this.settings.getDateFromFormat, true)
+      const date = window.moment(file.basename, this.settings.getDateFromFormat, true)
       return date.isValid() ? date : null
     }
 
@@ -163,7 +163,7 @@ export default class ImmichPicker extends Plugin {
       const frontMatter = meta?.frontmatter
       if (frontMatter && frontMatter[this.settings.getDateFromFrontMatterKey]) {
         const dateValue = frontMatter[this.settings.getDateFromFrontMatterKey] as string
-        const date = moment(dateValue, this.settings.getDateFromFormat, true)
+        const date = window.moment(dateValue, this.settings.getDateFromFormat, true)
         return date.isValid() ? date : null
       }
     }
