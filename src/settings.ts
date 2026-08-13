@@ -1,5 +1,4 @@
-import { App, moment, Notice, PluginSettingTab, Setting } from 'obsidian'
-import { FolderSuggest } from './suggesters/FolderSuggester'
+import { App, moment, Notice, PluginSettingTab, SettingDefinitionItem } from 'obsidian'
 import ImmichPicker from './main'
 
 export type GetDateFromOption = 'none' | 'title' | 'frontmatter';
@@ -48,324 +47,314 @@ export class ImmichPickerSettingTab extends PluginSettingTab {
     this.plugin = plugin
   }
 
-  display (): void {
-    const { containerEl } = this
-
-    containerEl.empty()
-    containerEl.addClass('immich-picker-settings')
-
-    const setVisible = (setting: Setting, visible: boolean) => {
-      setting.settingEl.toggle(visible)
-    }
-
-    /*
-     Connection settings
-     */
-
-    new Setting(containerEl)
-      .setName('Immich server connection')
-      .setHeading()
-
-    new Setting(containerEl)
-      .setName('Server URL')
-      .setDesc('The URL of your Immich server (e.g., https://immich.example.com)')
-      .addText(text => text
-        .setPlaceholder('https://immich.example.com')
-        .setValue(this.plugin.settings.serverUrl)
-        .onChange(async value => {
-          // Remove trailing slash
-          this.plugin.settings.serverUrl = value.trim().replace(/\/+$/, '')
-          await this.plugin.saveSettings()
-        }))
-
-    new Setting(containerEl)
-      .setName('API key')
-      .addText(text => text
-        .setPlaceholder('Enter your API key')
-        .setValue(this.plugin.settings.apiKey)
-        .onChange(async value => {
-          this.plugin.settings.apiKey = value.trim()
-          await this.plugin.saveSettings()
-        }))
-      .then(setting => {
-        setting.descEl.appendText('Generate in Immich under Account Settings > API Keys.')
-        setting.descEl.createEl('br')
-        setting.descEl.appendText('Required permissions: ')
-        setting.descEl.createEl('code', { text: 'asset.read' })
-        setting.descEl.appendText(', ')
-        setting.descEl.createEl('code', { text: 'asset.view' })
-        setting.descEl.createEl('br')
-        setting.descEl.appendText('Optional for albums: ')
-        setting.descEl.createEl('code', { text: 'album.read' })
-      })
-
-    new Setting(containerEl)
-      .setDesc('Test your connection to the Immich server.')
-      .addButton(btn => btn
-        .setButtonText('Test connection')
-        .setCta()
-        .onClick(async () => {
-          try {
-            const result = await this.plugin.immichApi.testConnection()
-            if (result) {
-              new Notice('Connection successful!')
-            } else {
-              new Notice('Connection failed. Check your server URL and API key.')
+  /**
+   * Declarative settings. Returning a non-empty array makes Obsidian render
+   * the tab from these definitions and index them for settings search.
+   */
+  getSettingDefinitions (): SettingDefinitionItem[] {
+    return [
+      {
+        type: 'group',
+        heading: 'Immich server connection',
+        items: [
+          {
+            name: 'Server URL',
+            desc: 'The URL of your Immich server (e.g., https://immich.example.com)',
+            control: {
+              type: 'text',
+              key: 'serverUrl',
+              placeholder: 'https://immich.example.com',
+              defaultValue: DEFAULT_SETTINGS.serverUrl
             }
-          } catch (e) {
-            new Notice('Connection failed: ' + (e as Error).message)
+          },
+          {
+            name: 'API key',
+            desc: createFragment(frag => {
+              frag.appendText('Generate in Immich under Account Settings > API Keys.')
+              frag.createEl('br')
+              frag.appendText('Required permissions: ')
+              frag.createEl('code', { text: 'asset.read' })
+              frag.appendText(', ')
+              frag.createEl('code', { text: 'asset.view' })
+              frag.createEl('br')
+              frag.appendText('Optional for albums: ')
+              frag.createEl('code', { text: 'album.read' })
+            }),
+            control: {
+              type: 'text',
+              key: 'apiKey',
+              placeholder: 'Enter your API key',
+              defaultValue: DEFAULT_SETTINGS.apiKey
+            }
+          },
+          {
+            name: 'Test connection',
+            desc: 'Test your connection to the Immich server.',
+            render: setting => {
+              setting.addButton(btn => btn
+                .setButtonText('Test connection')
+                .setCta()
+                .onClick(() => void this.testConnection()))
+            }
           }
-        }))
-
-    /*
-     Photo picker settings
-     */
-
-    new Setting(containerEl)
-      .setName('Photo picker')
-      .setHeading()
-
-    new Setting(containerEl)
-      .setName('Photos per page')
-      .setDesc('Number of photos to load at a time (recent, search results, and "load next")')
-      .addText(text => text
-        .setPlaceholder(DEFAULT_SETTINGS.recentPhotosCount.toString())
-        .setValue(this.plugin.settings.recentPhotosCount.toString())
-        .onChange(async value => {
-          const num = parseInt(value, 10)
-          if (!isNaN(num) && num > 0) {
-            this.plugin.settings.recentPhotosCount = num
-            await this.plugin.saveSettings()
+        ]
+      },
+      {
+        type: 'group',
+        heading: 'Photo picker',
+        items: [
+          {
+            name: 'Photos per page',
+            desc: 'Number of photos to load at a time (recent, search results, and "load next")',
+            control: {
+              type: 'number',
+              key: 'recentPhotosCount',
+              min: 1,
+              defaultValue: DEFAULT_SETTINGS.recentPhotosCount
+            }
+          },
+          {
+            name: 'Grid columns',
+            desc: 'Number of columns in the photo grid',
+            control: {
+              type: 'number',
+              key: 'gridColumns',
+              min: 1,
+              max: 10,
+              defaultValue: DEFAULT_SETTINGS.gridColumns
+            }
           }
-        }))
-
-    new Setting(containerEl)
-      .setName('Grid columns')
-      .setDesc('Number of columns in the photo grid')
-      .addText(text => text
-        .setPlaceholder(DEFAULT_SETTINGS.gridColumns.toString())
-        .setValue(this.plugin.settings.gridColumns.toString())
-        .onChange(async value => {
-          const num = parseInt(value, 10)
-          if (!isNaN(num) && num > 0 && num <= 10) {
-            this.plugin.settings.gridColumns = num
-            await this.plugin.saveSettings()
+        ]
+      },
+      {
+        type: 'group',
+        heading: 'Note date detection',
+        items: [
+          {
+            name: 'Get date from',
+            desc: 'Where to extract the date for filtering photos',
+            control: {
+              type: 'dropdown',
+              key: 'getDateFrom',
+              options: {
+                none: 'Disabled',
+                title: 'Note title',
+                frontmatter: 'Frontmatter property'
+              },
+              defaultValue: DEFAULT_SETTINGS.getDateFrom
+            }
+          },
+          {
+            name: 'Frontmatter key',
+            desc: 'The frontmatter property containing the date',
+            visible: () => this.plugin.settings.getDateFrom === 'frontmatter',
+            control: {
+              type: 'text',
+              key: 'getDateFromFrontMatterKey',
+              placeholder: DEFAULT_SETTINGS.getDateFromFrontMatterKey,
+              defaultValue: DEFAULT_SETTINGS.getDateFromFrontMatterKey
+            }
+          },
+          {
+            name: 'Date format',
+            desc: createFragment(frag => {
+              frag.appendText('Expected date format in title/frontmatter (')
+              frag.createEl('a', {
+                text: 'Moment.js format',
+                href: 'https://momentjs.com/docs/#/displaying/format/'
+              })
+              frag.appendText(').')
+            }),
+            visible: () => this.plugin.settings.getDateFrom !== 'none',
+            control: {
+              type: 'text',
+              key: 'getDateFromFormat',
+              placeholder: DEFAULT_SETTINGS.getDateFromFormat,
+              defaultValue: DEFAULT_SETTINGS.getDateFromFormat
+            }
           }
-        }))
+        ]
+      },
+      {
+        type: 'group',
+        heading: 'Thumbnails',
+        items: [
+          {
+            name: 'Thumbnail width',
+            desc: 'Maximum width of the locally-saved thumbnail image in pixels',
+            control: {
+              type: 'number',
+              key: 'thumbnailWidth',
+              min: 1,
+              defaultValue: DEFAULT_SETTINGS.thumbnailWidth
+            }
+          },
+          {
+            name: 'Thumbnail height',
+            desc: 'Maximum height of the locally-saved thumbnail image in pixels',
+            control: {
+              type: 'number',
+              key: 'thumbnailHeight',
+              min: 1,
+              defaultValue: DEFAULT_SETTINGS.thumbnailHeight
+            }
+          },
+          {
+            // Rendered imperatively to keep the live filename preview.
+            name: 'Image filename format',
+            render: setting => {
+              setting.descEl.appendText('Filename format for saving thumbnails (')
+              setting.descEl.createEl('a', {
+                text: 'Moment.js format',
+                href: 'https://momentjs.com/docs/#/displaying/format/'
+              })
+              setting.descEl.appendText(').')
+              setting.descEl.createEl('br')
+              setting.descEl.createEl('br')
+              setting.descEl.appendText('Preview: ')
+              const previewEl = setting.descEl.createEl('code', { cls: 'immich-filename-preview' })
+              this.updateFilenamePreview(previewEl, this.plugin.settings.filename)
 
-    /*
-     Date detection settings
-     */
+              setting.addText(text => text
+                .setPlaceholder(DEFAULT_SETTINGS.filename)
+                .setValue(this.plugin.settings.filename)
+                .onChange(async value => {
+                  this.plugin.settings.filename = value.trim()
+                  await this.plugin.saveSettings()
+                  this.updateFilenamePreview(previewEl, value.trim())
+                }))
+            }
+          }
+        ]
+      },
+      {
+        type: 'group',
+        heading: 'Storage location',
+        items: [
+          {
+            name: 'Location to save thumbnails',
+            desc: 'Where the local thumbnail images will be saved',
+            control: {
+              type: 'dropdown',
+              key: 'locationOption',
+              options: {
+                note: 'Same folder as the note',
+                subfolder: 'In a subfolder of the current note',
+                specified: 'In a specific folder'
+              },
+              defaultValue: DEFAULT_SETTINGS.locationOption
+            }
+          },
+          {
+            name: 'Thumbnail image folder',
+            desc: 'Thumbnails will be saved to this folder',
+            visible: () => this.plugin.settings.locationOption === 'specified',
+            control: {
+              type: 'folder',
+              key: 'locationFolder',
+              placeholder: 'Path/for/thumbnails',
+              defaultValue: DEFAULT_SETTINGS.locationFolder
+            }
+          },
+          {
+            name: 'Subfolder name',
+            desc: 'Subfolder within the current note\'s folder',
+            visible: () => this.plugin.settings.locationOption === 'subfolder',
+            control: {
+              type: 'text',
+              key: 'locationSubfolder',
+              placeholder: 'Photos',
+              defaultValue: DEFAULT_SETTINGS.locationSubfolder
+            }
+          }
+        ]
+      },
+      {
+        type: 'group',
+        heading: 'Output format',
+        // Keeps the `.immich-picker-settings textarea` rule in styles.css applying.
+        cls: 'immich-picker-settings',
+        items: [
+          {
+            name: 'Inserted Markdown',
+            desc: createFragment(frag => {
+              frag.appendText('The Markdown text inserted when adding a photo. Available variables:')
+              const ul = frag.createEl('ul')
+              ul.createEl('li', { text: 'local_thumbnail_link - path to the local thumbnail' })
+              ul.createEl('li', { text: 'immich_url - URL to the photo in Immich' })
+              ul.createEl('li', { text: 'immich_asset_id - the Immich asset ID' })
+              ul.createEl('li', { text: 'original_filename - original filename from Immich' })
+              ul.createEl('li', { text: 'taken_date - date the photo was taken' })
+              ul.createEl('li', { text: 'description - photo description from Immich' })
+            }),
+            control: {
+              type: 'textarea',
+              key: 'thumbnailMarkdown',
+              placeholder: DEFAULT_SETTINGS.thumbnailMarkdown,
+              defaultValue: DEFAULT_SETTINGS.thumbnailMarkdown
+            }
+          },
+          {
+            name: 'Convert pasted Immich links',
+            desc: createFragment(frag => {
+              frag.appendText('When pasting an Immich photo URL (e.g., ')
+              frag.createEl('code', { text: 'https://immich.example.com/photos/abc-123' })
+              frag.appendText('), automatically download the thumbnail and insert it as markdown instead of pasting the plain URL.')
+            }),
+            control: {
+              type: 'toggle',
+              key: 'convertPastedLink',
+              defaultValue: DEFAULT_SETTINGS.convertPastedLink
+            }
+          }
+        ]
+      }
+    ]
+  }
 
-    new Setting(containerEl)
-      .setName('Note date detection')
-      .setHeading()
-      .setDesc('Detect a date from the current note to filter photos.')
+  getControlValue (key: string): unknown {
+    return this.plugin.settings[key as keyof ImmichPickerSettings]
+  }
 
-    const dateFromFrontMatterKeyEl = new Setting(this.containerEl)
-      .setName('Frontmatter key')
-      .setDesc('The frontmatter property containing the date')
-      .addText(text => text
-        .setPlaceholder(DEFAULT_SETTINGS.getDateFromFrontMatterKey)
-        .setValue(this.plugin.settings.getDateFromFrontMatterKey)
-        .onChange(async value => {
-          this.plugin.settings.getDateFromFrontMatterKey = value.trim()
-          await this.plugin.saveSettings()
-        }))
+  async setControlValue (key: string, value: unknown): Promise<void> {
+    const normalized = typeof value === 'string' ? this.normalize(key, value) : value
+    Object.assign(this.plugin.settings, { [key]: normalized })
+    await this.plugin.saveSettings()
 
-    const dateFromFormatEl = new Setting(this.containerEl)
-      .setName('Date format')
-      .addText(text => text
-        .setPlaceholder(DEFAULT_SETTINGS.getDateFromFormat)
-        .setValue(this.plugin.settings.getDateFromFormat)
-        .onChange(async value => {
-          this.plugin.settings.getDateFromFormat = value.trim()
-          await this.plugin.saveSettings()
-        }))
-      .then(setting => {
-        setting.descEl.appendText('Expected date format in title/frontmatter (')
-        setting.descEl.createEl('a', {
-          text: 'Moment.js format',
-          href: 'https://momentjs.com/docs/#/displaying/format/'
-        })
-        setting.descEl.appendText(').')
-      })
+    // These two drive the `visible` predicates of other settings.
+    if (key === 'getDateFrom' || key === 'locationOption') {
+      this.refreshDomState()
+    }
+  }
 
-    new Setting(containerEl)
-      .setName('Get date from')
-      .setDesc('Where to extract the date for filtering photos')
-      .addDropdown(dropdown => {
-        dropdown
-          .addOption('none', 'Disabled')
-          .addOption('title', 'Note title')
-          .addOption('frontmatter', 'Frontmatter property')
-          .setValue(this.plugin.settings.getDateFrom)
-          .onChange(async value => {
-            this.plugin.settings.getDateFrom = value as 'none' | 'title' | 'frontmatter'
-            setVisible(dateFromFrontMatterKeyEl, value === 'frontmatter')
-            setVisible(dateFromFormatEl, value !== 'none')
-            await this.plugin.saveSettings()
-          })
-      })
-      .then(() => {
-        setVisible(dateFromFrontMatterKeyEl, this.plugin.settings.getDateFrom === 'frontmatter')
-        setVisible(dateFromFormatEl, this.plugin.settings.getDateFrom !== 'none')
-      })
+  /** Mirrors the input cleanup the imperative display() fallback performs. */
+  private normalize (key: string, value: string): string {
+    switch (key) {
+      case 'serverUrl':
+        return value.trim().replace(/\/+$/, '')
+      case 'locationSubfolder':
+        return value.trim().replace(/^[\\/]+/, '').replace(/[\\/]+$/, '')
+      case 'apiKey':
+      case 'filename':
+      case 'getDateFromFrontMatterKey':
+      case 'getDateFromFormat':
+        return value.trim()
+      default:
+        return value
+    }
+  }
 
-    /*
-     Thumbnail settings
-     */
-
-    new Setting(containerEl)
-      .setName('Thumbnails')
-      .setHeading()
-      .setDesc('Configure the locally-saved thumbnail images.')
-
-    new Setting(containerEl)
-      .setName('Thumbnail width')
-      .setDesc('Maximum width of the locally-saved thumbnail image in pixels')
-      .addText(text => text
-        .setPlaceholder(DEFAULT_SETTINGS.thumbnailWidth.toString())
-        .setValue(this.plugin.settings.thumbnailWidth.toString())
-        .onChange(async value => {
-          this.plugin.settings.thumbnailWidth = +value
-          await this.plugin.saveSettings()
-        }))
-
-    new Setting(containerEl)
-      .setName('Thumbnail height')
-      .setDesc('Maximum height of the locally-saved thumbnail image in pixels')
-      .addText(text => text
-        .setPlaceholder(DEFAULT_SETTINGS.thumbnailHeight.toString())
-        .setValue(this.plugin.settings.thumbnailHeight.toString())
-        .onChange(async value => {
-          this.plugin.settings.thumbnailHeight = +value
-          await this.plugin.saveSettings()
-        }))
-
-    let filenamePreviewEl: HTMLElement
-
-    new Setting(containerEl)
-      .setName('Image filename format')
-      .addText(text => text
-        .setPlaceholder(DEFAULT_SETTINGS.filename)
-        .setValue(this.plugin.settings.filename)
-        .onChange(async value => {
-          this.plugin.settings.filename = value.trim()
-          await this.plugin.saveSettings()
-          this.updateFilenamePreview(filenamePreviewEl, value.trim())
-        }))
-      .then(setting => {
-        setting.descEl.appendText('Filename format for saving thumbnails (')
-        setting.descEl.createEl('a', {
-          text: 'Moment.js format',
-          href: 'https://momentjs.com/docs/#/displaying/format/'
-        })
-        setting.descEl.appendText(').')
-        setting.descEl.createEl('br')
-        setting.descEl.createEl('br')
-        setting.descEl.appendText('Preview: ')
-        filenamePreviewEl = setting.descEl.createEl('code', { cls: 'immich-filename-preview' })
-        this.updateFilenamePreview(filenamePreviewEl, this.plugin.settings.filename)
-      })
-
-    /*
-     Storage location settings
-     */
-
-    new Setting(containerEl)
-      .setName('Storage location')
-      .setHeading()
-
-    const locationOptionEl = new Setting(this.containerEl)
-    const locationFolderEl = new Setting(this.containerEl)
-      .setName('Thumbnail image folder')
-      .setDesc('Thumbnails will be saved to this folder')
-      .addSearch(search => {
-        new FolderSuggest(this.app, search.inputEl)
-        search.setPlaceholder('Path/for/thumbnails')
-          .setValue(this.plugin.settings.locationFolder)
-          .onChange(async value => {
-            this.plugin.settings.locationFolder = value.trim()
-            await this.plugin.saveSettings()
-          })
-      })
-
-    const locationSubfolderEl = new Setting(this.containerEl)
-      .setName('Subfolder name')
-      .setDesc('Subfolder within the current note\'s folder')
-      .addText(text => {
-        text
-          .setPlaceholder('Photos')
-          .setValue(this.plugin.settings.locationSubfolder)
-          .onChange(async value => {
-            this.plugin.settings.locationSubfolder = value.trim().replace(/^[\\/]+/, '').replace(/[\\/]+$/, '')
-            await this.plugin.saveSettings()
-          })
-      })
-
-    locationOptionEl
-      .setName('Location to save thumbnails')
-      .setDesc('Where the local thumbnail images will be saved')
-      .addDropdown(dropdown => {
-        dropdown
-          .addOption('note', 'Same folder as the note')
-          .addOption('subfolder', 'In a subfolder of the current note')
-          .addOption('specified', 'In a specific folder')
-          .setValue(this.plugin.settings.locationOption)
-          .onChange(async value => {
-            setVisible(locationFolderEl, value === 'specified')
-            setVisible(locationSubfolderEl, value === 'subfolder')
-            this.plugin.settings.locationOption = value
-            await this.plugin.saveSettings()
-          })
-      })
-      .then(() => {
-        setVisible(locationFolderEl, this.plugin.settings.locationOption === 'specified')
-        setVisible(locationSubfolderEl, this.plugin.settings.locationOption === 'subfolder')
-      })
-
-    /*
-     Output settings
-     */
-
-    new Setting(containerEl)
-      .setName('Output format')
-      .setHeading()
-
-    new Setting(containerEl)
-      .setName('Inserted Markdown')
-      .setDesc('The Markdown text inserted when adding a photo. Available variables:')
-      .addTextArea(text => text
-        .setPlaceholder(DEFAULT_SETTINGS.thumbnailMarkdown)
-        .setValue(this.plugin.settings.thumbnailMarkdown)
-        .onChange(async value => {
-          this.plugin.settings.thumbnailMarkdown = value
-          await this.plugin.saveSettings()
-        }))
-      .then(setting => {
-        const ul = setting.descEl.createEl('ul')
-        ul.createEl('li').setText('local_thumbnail_link - path to the local thumbnail')
-        ul.createEl('li').setText('immich_url - URL to the photo in Immich')
-        ul.createEl('li').setText('immich_asset_id - the Immich asset ID')
-        ul.createEl('li').setText('original_filename - original filename from Immich')
-        ul.createEl('li').setText('taken_date - date the photo was taken')
-        ul.createEl('li').setText('description - photo description from Immich')
-      })
-
-    new Setting(containerEl)
-      .setName('Convert pasted Immich links')
-      .addToggle(toggle => toggle
-        .setValue(this.plugin.settings.convertPastedLink)
-        .onChange(async value => {
-          this.plugin.settings.convertPastedLink = value
-          await this.plugin.saveSettings()
-        }))
-      .then(setting => {
-        setting.descEl.appendText('When pasting an Immich photo URL (e.g., ')
-        setting.descEl.createEl('code', { text: 'https://immich.example.com/photos/abc-123' })
-        setting.descEl.appendText('), automatically download the thumbnail and insert it as markdown instead of pasting the plain URL.')
-      })
+  private async testConnection (): Promise<void> {
+    try {
+      const result = await this.plugin.immichApi.testConnection()
+      if (result) {
+        new Notice('Connection successful!')
+      } else {
+        new Notice('Connection failed. Check your server URL and API key.')
+      }
+    } catch (e) {
+      new Notice('Connection failed: ' + (e as Error).message)
+    }
   }
 
   updateFilenamePreview (el: HTMLElement, format: string): void {

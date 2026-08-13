@@ -1,15 +1,11 @@
-import { dirname } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import obsidianmd from 'eslint-plugin-obsidianmd'
 import tseslint from 'typescript-eslint'
-
-const tsconfigRootDir = dirname(fileURLToPath(import.meta.url))
 
 export default [
   {
     ignores: ['node_modules/**', 'main.js', 'eslint.config.js', '*.mjs']
   },
-  ...tseslint.configs.recommended,
+  ...tseslint.configs.recommendedTypeChecked,
   {
     files: ['**/*.ts'],
     plugins: {
@@ -17,14 +13,14 @@ export default [
     },
     languageOptions: {
       parserOptions: {
-        projectService: true,
-        tsconfigRootDir
+        projectService: true
       },
       globals: {
         console: 'readonly',
         createDiv: 'readonly',
         createEl: 'readonly',
         createSpan: 'readonly',
+        createFragment: 'readonly',
         activeDocument: 'readonly',
         activeWindow: 'readonly',
         window: 'readonly',
