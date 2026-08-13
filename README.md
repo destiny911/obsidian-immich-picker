@@ -1,5 +1,7 @@
 # Obsidian Immich Picker
 
+<img src="docs/logo.webp" alt="" width="120" />
+
 An Obsidian plugin to insert images from a self-hosted [Immich](https://immich.app/) photo server. Pick photos from your recent uploads and embed them directly into your notes.
 
 Adapted from [obsidian-google-photos](https://github.com/alangrainger/obsidian-google-photos) for Immich. I created this as an alternative to [his Templater script](https://github.com/almarber/immich-templater-script).
@@ -15,8 +17,9 @@ Adapted from [obsidian-google-photos](https://github.com/alangrainger/obsidian-g
 - **Album Browsing**: Browse your Immich albums, view album contents, and insert single photos or entire albums at once
 - **Date Filtering**: Detect dates from note titles or frontmatter and show photos from that day
 - **Paste URL Conversion**: Automatically converts pasted Immich photo URLs into embedded thumbnails
+- **Image Modes**: Store images as local thumbnails, as links to your server, or as public shared links, and convert between them in bulk
 - **Local & Public URLs**: Works with both local network URLs (e.g., `http://nas:2283`) and public URLs (e.g., `https://immich.example.com`)
-- **Secure**: API key is stored in plugin settings only, never embedded in your notes
+- **Secure**: API key is stored in your OS credential manager, never embedded in your notes
 
 ## Requirements
 
@@ -51,6 +54,8 @@ Adapted from [obsidian-google-photos](https://github.com/alangrainger/obsidian-g
 2. Enter your Immich server URL (e.g., `https://immich.example.com`)
 3. Enter your API key (create one in Immich under Account Settings → API Keys)
 4. Click "Test Connection" to verify
+
+Your API key is stored in your OS credential manager (Keychain on macOS, Credential Manager on Windows, libsecret on Linux), not in the plugin's data file. A key saved by an older version is migrated automatically on first load.
 
 ## Usage
 
@@ -90,12 +95,45 @@ When you copy a photo URL from Immich (e.g., `https://immich.example.com/photos/
 
 This can be disabled in settings if you prefer to paste plain URLs.
 
+### Choose How Images Are Stored
+
+The **Image mode** setting controls what the plugin writes into your note:
+
+| Mode | What it inserts | Notes |
+|---------|-------------|---------|
+| Local (default) | A thumbnail downloaded into your vault | Works offline and survives export |
+| Remote | A markdown link to your Immich server | Nothing saved to your vault, but the plugin has to be installed to see the image |
+| Shared | An Immich shared link | The URL works anywhere, and is readable by anyone who has it |
+
+### Convert Between Formats
+
+To move existing images from one mode to another, run "Convert Immich images" from the command palette:
+
+1. Choose a scope: current note, a folder, or the whole vault
+2. Choose the target format
+3. Click "Scan" to see how many images will be converted
+4. Click "Convert"
+
+Converting to shared links asks for confirmation first, since those URLs are public and do not expire.
+
+Conversion needs the note to record which Immich asset an image came from. Remote and shared images always carry it in their URL. Local images carry it only if your inserted text format includes `{{immich_url}}` or `{{immich_thumbnail_url}}` — the default and the "Markdown" preset do, the "Wikilink" and "Image only" presets do not. Images inserted with those two are skipped by the scan, because nothing in the note says which photo they are.
+
+### Mobile
+
+Everything works on mobile. The plugin adds a ribbon icon, reachable from the hamburger menu. To put it on the toolbar above the keyboard instead, go to Settings → Toolbar, tap +, and search for "Immich".
+
+The [Commander](https://github.com/phibr0/obsidian-commander) plugin can also add Immich commands to the ribbon, context menus, and page headers.
+
 ## Settings
 
 | Setting | Description | Default |
 |---------|-------------|---------|
 | Server URL | Your Immich server URL | - |
 | API Key | Your Immich API key | - |
+| Image mode | How images are stored (Local/Remote/Shared) | Local |
+| Remote image format | Server link or code block, for remote mode | Server link |
+| Render in edit mode | Show remote images inline while editing | Enabled |
+| Display width | Default width for inserted images | Original size |
 | Photos per page | Photos loaded at a time (recent, search, pagination) | 9 |
 | Grid columns | Number of columns in the photo grid | 3 |
 | Get date from | Where to extract date for filtering (Disabled/Note title/Frontmatter) | Disabled |
@@ -110,11 +148,14 @@ This can be disabled in settings if you prefer to paste plain URLs.
 ### Template Variables
 
 - `{{local_thumbnail_link}}` - Path to the local thumbnail
+- `{{immich_thumbnail_url}}` - Direct thumbnail URL on the server
 - `{{immich_url}}` - URL to the photo in Immich
 - `{{immich_asset_id}}` - The Immich asset ID
 - `{{original_filename}}` - Original filename from Immich
 - `{{taken_date}}` - Date the photo was taken
 - `{{description}}` - Photo description from Immich
+
+The settings tab offers a few presets for this, picked to match whether your vault uses markdown links or wikilinks.
 
 ## Development
 

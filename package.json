@@ -34,6 +34,7 @@
 		]
 	},
 	"devDependencies": {
+		"@codemirror/view": "^6.38.6",
 		"@eslint/json": "^0.14.0",
 		"@types/node": "^18.19.130",
 		"esbuild": "^0.27.2",

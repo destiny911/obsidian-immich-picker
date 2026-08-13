@@ -50,8 +50,6 @@ export class GridView {
         img.description = asset.description || ''
         img.onclick = onclick
         img.classList.add('immich-picker-thumbnail')
-
-        // Add to DOM
         el.appendChild(img)
 
         // Fetch actual thumbnail
@@ -59,7 +57,7 @@ export class GridView {
         const imageData = await requestUrl({
           url: thumbnailUrl,
           headers: {
-            'x-api-key': settings.apiKey
+            'x-api-key': this.plugin.cachedApiKey || settings.apiKey
           }
         })
 

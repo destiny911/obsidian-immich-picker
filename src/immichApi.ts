@@ -11,8 +11,12 @@ export interface ImmichAsset {
 
 export interface ImmichAssetDetails {
   id: string;
+  originalFileName?: string;
+  fileCreatedAt?: string;
   exifInfo?: {
     description?: string;
+    exifImageWidth?: number;
+    exifImageHeight?: number;
   };
 }
 
@@ -31,6 +35,13 @@ export interface ImmichAlbum {
   updatedAt: string;
 }
 
+export interface ImmichSharedLink {
+  id: string;
+  key: string;
+  type: string;
+  assets: ImmichAsset[];
+}
+
 export class ImmichApi {
   plugin: ImmichPicker
 
@@ -43,7 +54,7 @@ export class ImmichApi {
   }
 
   private get apiKey (): string {
-    return this.plugin.settings.apiKey
+    return this.plugin.cachedApiKey || this.plugin.settings.apiKey
   }
 
   private getHeaders (): Record<string, string> {
@@ -140,7 +151,8 @@ export class ImmichApi {
   }
 
   getThumbnailUrl (assetId: string): string {
-    return `${this.serverUrl}/api/assets/${assetId}/thumbnail?size=preview`
+    // #.jpg fragment hints to Obsidian's parser that this is an image (doesn't affect HTTP request)
+    return `${this.serverUrl}/api/assets/${assetId}/thumbnail?size=preview#.jpg`
   }
 
   getAssetUrl (assetId: string): string {
@@ -204,6 +216,30 @@ export class ImmichApi {
 
     const album = response.json as { assets: ImmichAsset[] }
     return album.assets || []
+  }
+
+  async createSharedLink (assetId: string): Promise<ImmichSharedLink> {
+    const response = await requestUrl({
+      url: `${this.serverUrl}/api/shared-links`,
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify({
+        type: 'INDIVIDUAL',
+        assetIds: [assetId]
+      })
+    })
+
+    if (response.status !== 200 && response.status !== 201) {
+      throw new Error(`Failed to create shared link: ${response.status}`)
+    }
+
+    return response.json as ImmichSharedLink
+  }
+
+  getSharedThumbnailUrl (assetId: string, shareKey: string): string {
+    // Same #.jpg hint as getThumbnailUrl, so Obsidian's parser treats a shared
+    // URL as an image too.
+    return `${this.serverUrl}/api/assets/${assetId}/thumbnail?size=preview&key=${shareKey}#.jpg`
   }
 
   extractAssetIdFromUrl (url: string): string | null {

@@ -3,7 +3,9 @@ import tseslint from 'typescript-eslint'
 
 export default [
   {
-    ignores: ['node_modules/**', 'main.js', 'eslint.config.js', '*.mjs']
+    // '.claude/**' covers worktrees checked out inside the repo, which carry
+    // their own built main.js. Plain 'main.js' only matches at the root.
+    ignores: ['node_modules/**', '.claude/**', '**/main.js', 'eslint.config.js', '*.mjs']
   },
   ...tseslint.configs.recommendedTypeChecked,
   {
@@ -40,11 +42,13 @@ export default [
           '^asset\\.view$',
           '^album\\.read$',
           '^local_thumbnail_link -',
+          '^immich_thumbnail_url -',
           '^immich_url -',
           '^immich_asset_id -',
           '^original_filename -',
           '^taken_date -',
-          '^description -'
+          '^description -',
+          '^display_width -'
         ]
       }],
       'no-new': 'off',
